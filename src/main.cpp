@@ -7,6 +7,7 @@
 #include <MFRC522.h> 
 #include <Adafruit_GFX.h>
 #include <Adafruit_SSD1306.h>
+#include <Adafruit_BMP280.h>
 
 //pinout (inspired by labs)
 #define RFID_SS      5
@@ -35,6 +36,12 @@
 byte statusByte = 0b00000000;
 byte lastStatus = 0b11111111; 
 
+//========== From Lab 6 ===========
+Adafruit_BMP280 bmp;
+
+//=====From Lab 8 ======
+Adafruit_SSD1306 display(SCREEN_WIDTH, SCREEN_HEIGHT, &SPI, OLED_DC, OLED_RESET, OLED_CS);
+
 
 //======== From Lab 9 ===============  
 MFRC522 rfid(RFID_SS, RFID_RST);                     
@@ -55,7 +62,20 @@ volatile bool helpFlag = false;
 volatile unsigned long lastInterruptHelp = 0;
 
 
+const unsigned long SENSOR_TIME = 2000;              
+unsigned long lastSensor = 0;
+const unsigned long DISPLAY_TIME = 250;
+unsigned long lastDisplay = 0;
 
+//======== From lab 11 ============
+
+const int NUM_SAMPLES = 10;                          
+float temps[NUM_SAMPLES];
+int sampleIndex = 0;
+int sampleCount = 0;
+float avgTemp = 0.0;
+
+float setPoint = 24.0;
 
 
 // functions 
@@ -79,6 +99,60 @@ void checkStatusChange()
     Serial.println();
   }
 } 
+
+//============== From Lab 6 & 8 =====
+
+void updateDisplay()
+{
+  display.clearDisplay();
+  display.setTextColor(SSD1306_WHITE);
+
+  display.setTextSize(2);
+  display.setCursor(0, 0);
+  if ((statusByte & MASK_OCCUPIED) != 0)
+  {
+    display.println("OCCUPIED");
+  }
+  else
+  {
+    display.println("FREE");
+  }
+
+  display.setTextSize(1);
+  display.setCursor(0, 24);
+  display.print("Avg: ");
+  if (sampleCount > 0)
+  {
+    display.print(avgTemp, 1);
+    display.println(" C");
+  }
+  else
+  {
+    display.println("--");
+  }
+  display.print("Set: ");
+  display.print(setPoint, 1);
+  display.println(" C");
+
+  if ((statusByte & MASK_HELP) != 0)
+  {
+    display.println("HELP REQUESTED");
+  }
+  else if ((statusByte & MASK_TOO_HOT) != 0)
+  {
+    display.println("Fan ON (too hot)");
+  }
+  else
+  {
+    display.println("Fan off");
+  }
+  display.display();
+}
+
+
+
+
+
 //======== from lab 9 ============================ 
 String getUID()
 {
@@ -191,6 +265,34 @@ void updateOutputs()
   }
 }
 
+//======= From lab 11 ====== 
+
+float getAverage()
+{
+  float sum = 0;
+  for (int i = 0; i < sampleCount; i++)
+  {
+    sum = sum + temps[i];
+  }
+  return sum / sampleCount;
+}
+
+//===== Other ========= 
+
+void storeSample(float t)
+{
+  temps[sampleIndex] = t;
+  sampleIndex++;
+  if (sampleIndex >= NUM_SAMPLES)
+  {
+    sampleIndex = 0;
+  }
+  if (sampleCount < NUM_SAMPLES)
+  {
+    sampleCount++;
+  }
+}
+
 
 void setup() { 
  Serial.begin(115200);
@@ -210,6 +312,30 @@ void setup() {
   SPI.begin();                          
   rfid.PCD_Init();
   rfid.PCD_DumpVersionToSerial();
+  
+  // ====== Bmp code from lab 6&7 ======
+  Wire.begin();                 
+  if (bmp.begin(0x76))
+  {
+    Serial.println("BMP280 Found at 0x76");
+  }
+  else if (bmp.begin(0x77))
+  {
+    Serial.println("BMP280 Found at 0x77");
+  }
+  else
+  {
+    Serial.println("BMP280 Not Found");
+  }
+
+  // ============== Lab 8 Oled code =====
+  display.begin(SSD1306_SWITCHCAPVCC);
+  Serial.println("OLED Started");
+
+  lastSensor = millis() - SENSOR_TIME;
+
+
+
 
 
 } 
@@ -248,6 +374,23 @@ void loop() {
     blinkToggles--;
   }
 
+  //========= Lab 6&10 =============
+  if (millis() - lastSensor >= SENSOR_TIME) // temp measurment time
+  {
+    lastSensor = millis();
+    storeSample(bmp.readTemperature());
+    avgTemp = getAverage();
+  }
+
+
+  
+  if (millis() - lastDisplay >= DISPLAY_TIME) // Oled refresh
+  {
+    lastDisplay = millis();
+    updateDisplay();
+  }
+
+  
   updateOutputs();
   checkStatusChange();
 }
