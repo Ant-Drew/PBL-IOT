@@ -77,6 +77,15 @@ float avgTemp = 0.0;
 
 float setPoint = 24.0;
 
+//==== from lab 12 & 2 ======= 
+
+const unsigned long POT_TIME = 100;
+unsigned long lastPot = 0;
+
+const int PWM_FREQ = 5000;
+const int PWM_RES = 8;
+const int FAN_MIN_DUTY = 90; 
+
 
 // functions 
 
@@ -253,18 +262,6 @@ void onHelpPressed()
   startBuzzer(1000);
 }
 
-void updateOutputs()
-{
-  if ((statusByte & MASK_OCCUPIED) != 0)
-  {
-    digitalWrite(GREEN_LED, HIGH);
-  }
-  else
-  {
-    digitalWrite(GREEN_LED, LOW);
-  }
-}
-
 //======= From lab 11 ====== 
 
 float getAverage()
@@ -275,6 +272,31 @@ float getAverage()
     sum = sum + temps[i];
   }
   return sum / sampleCount;
+}
+
+void readSetPoint()
+{
+  int potValue = analogRead(POT_PIN);
+  setPoint = map(potValue, 0, 4095, 180, 320) / 10.0;
+}
+
+void updateFan()
+{
+  int duty = 0;
+  if ((statusByte & MASK_TOO_HOT) != 0)
+  {
+    int over = (int)((avgTemp - setPoint) * 10);
+    if (over > 50)
+    {
+      over = 50;
+    }
+    if (over < 0)
+    {
+      over = 0;
+    }
+    duty = map(over, 0, 50, FAN_MIN_DUTY, 255);
+  }
+  ledcWrite(FAN_PIN, duty);
 }
 
 //===== Other ========= 
@@ -292,6 +314,30 @@ void storeSample(float t)
     sampleCount++;
   }
 }
+
+void updateOutputs()
+{
+  if ((statusByte & MASK_OCCUPIED) != 0)
+  {
+    digitalWrite(GREEN_LED, HIGH);
+  }
+  else
+  {
+    digitalWrite(GREEN_LED, LOW);
+  }
+   if ((statusByte & MASK_OCCUPIED) != 0 && sampleCount > 0 && avgTemp > setPoint)
+  {
+    statusByte |= MASK_TOO_HOT;
+  }
+  else
+  {
+    statusByte &= ~MASK_TOO_HOT;
+  }
+  
+  updateFan();
+
+}
+
 
 
 void setup() { 
@@ -334,7 +380,12 @@ void setup() {
 
   lastSensor = millis() - SENSOR_TIME;
 
+ //========== Lab 12 ============
 
+  analogReadResolution(12);       
+  analogSetAttenuation(ADC_11db);
+  ledcAttach(FAN_PIN, PWM_FREQ, PWM_RES);
+  ledcWrite(FAN_PIN, 0);
 
 
 
@@ -390,7 +441,13 @@ void loop() {
     updateDisplay();
   }
 
-  
+  //====== Fan control with pot ========
+  if (millis() - lastPot >= POT_TIME)
+  {
+    lastPot = millis();
+    readSetPoint();
+  }  
+
   updateOutputs();
   checkStatusChange();
 }
