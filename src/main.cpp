@@ -27,7 +27,7 @@ File dataFile;
   int position = 0;
  
 WebServer server(80);
-// Paste the webpage code here	from lab 7
+// Webpage code seen in lab 7
 const char webpage[] PROGMEM = R"rawliteral(
 
 <!DOCTYPE html>
@@ -197,7 +197,6 @@ void handleLEDOff()
 
 void setup(){
 
-   void setup() {
     Serial.begin(9600);
     Serial.println("Program Started");
     Serial.println("Initializing SD Card...");
@@ -248,7 +247,7 @@ void loop(){
   Serial.println(position);
     delay(1000);
 
-  sensorValue = analogRead(potPin);
+//  sensorValue = analogRead(potPin);
     Serial.print("Value = ");
     Serial.println(sensorValue);
       delay(500);
@@ -266,7 +265,7 @@ void loop(){
   // dataFile.println(sensorValue);
   // dataFile.close();
 
-  dataFile = SD.open("sensor.csv", FILE_WRITE);
+  dataFile = SD.open("requests.csv", FILE_WRITE);
   dataFile.println("Time,Value");
   dataFile.close();
 
