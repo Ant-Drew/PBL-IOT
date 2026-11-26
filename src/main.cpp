@@ -33,7 +33,6 @@
 
 Adafruit_BMP280 bmp;
 
-
 float temperature;
 
 const char* ssid = "IOT-PBL-AC";
@@ -195,6 +194,12 @@ IP Address: 192.168.4.1
 
 )rawliteral";
 
+void handleStatus()
+{
+  status = 
+
+}
+
   // BMP280 code
 void handleRoot()
 {
@@ -204,22 +209,21 @@ void handleRoot()
   server.send(200, "text/html", page);
 }
 
-
 void handleFANOn()
 { 
   Serial.println("FAN ON");
-	  digitalWrite(fanPin, HIGH);
+	  digitalWrite(FAN_PIN, HIGH);
 	    server.sendHeader("Location", "/" );
 	    server.send(303);
 }
 void handleFANOff()
 {
   Serial.println("FAN OFF");
-	  digitalWrite( fanPin, LOW );
+	  digitalWrite( FAN_PIN, LOW );
 	    server.sendHeader("Location", "/" );
 	    server.send(303);
 }
-// missing fan level & byte as JSON
+// missing - fan level & byte as JSON
 
 
 void setup(){
@@ -274,7 +278,7 @@ void loop(){
   Serial.println(position);
     delay(1000);
 
-//  sensorValue = analogRead(potPin);
+  sensorValue = analogRead(potPin);
     Serial.print("Value = ");
     Serial.println(sensorValue);
       delay(500);
@@ -296,6 +300,7 @@ void loop(){
   dataFile.println("Time,Value");
   dataFile.close();
 
+  // Handles client requests
    server.handleClient();
-   // Handles client requests
+   
 }
