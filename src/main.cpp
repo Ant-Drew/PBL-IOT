@@ -1,3 +1,4 @@
+
 #include <Arduino.h>
 #include <Wire.h>
 #include <Adafruit_Sensor.h>
@@ -6,6 +7,29 @@
 #include <WebServer.h>
 #include <SPI.h>
 #include <SD.h>
+#include <ArduinoJson.
+
+//pinout (inspired by labs)
+#define RFID_SS      5
+#define RFID_RST     4
+#define OLED_DC      16
+#define OLED_RESET   17
+#define OLED_CS      14
+#define GREEN_LED    25
+#define RED_LED      26
+#define BUZZER       27
+#define HELP_BUTTON  33
+#define POT_PIN      34
+#define FAN_PIN      13
+
+//OLED size(from lab 8)
+#define SCREEN_WIDTH  128
+#define SCREEN_HEIGHT 64
+
+//Masks (From lab 2)
+#define MASK_OCCUPIED  0b00000001
+#define MASK_TOO_HOT   0b00000010
+#define MASK_HELP      0b00000100
 
 Adafruit_BMP280 bmp;
 
@@ -27,6 +51,7 @@ File dataFile;
   int position = 0;
  
 WebServer server(80);
+
 // Webpage code seen in lab 7
 const char webpage[] PROGMEM = R"rawliteral(
 
@@ -153,7 +178,7 @@ LED OFF
 <div class="info">
 
 <p>
-SSID: ESP32_Lab7
+SSID: IOT_PBL_AC
 </p>
 
 <p>
@@ -170,6 +195,7 @@ IP Address: 192.168.4.1
 
 )rawliteral";
 
+  // BMP280 code
 void handleRoot()
 {
   temperature = bmp.readTemperature();
@@ -178,17 +204,18 @@ void handleRoot()
   server.send(200, "text/html", page);
 }
 
-void handleLEDOn()
+
+void handleFANOn()
 { 
-  Serial.println("LED ON Route Accessed");
-	  digitalWrite(ledPin, HIGH);
+  Serial.println("FAN ON");
+	  digitalWrite(fanPin, HIGH);
 	    server.sendHeader("Location", "/" );
 	    server.send(303);
 }
-void handleLEDOff()
+void handleFANOff()
 {
-  Serial.println("LED OFF Route Accessed");
-	  digitalWrite( ledPin, LOW );
+  Serial.println("FAN OFF");
+	  digitalWrite( fanPin, LOW );
 	    server.sendHeader("Location", "/" );
 	    server.send(303);
 }
@@ -223,6 +250,7 @@ void setup(){
       Serial.println("BMP280 Not Found");
    }
 
+	// Wi-Fi code
   WiFi.softAP(ssid, password);
     Serial.print("IP Address: ");
     Serial.println(WiFi.softAPIP());
@@ -231,17 +259,16 @@ void setup(){
   server.on("/on", handleLEDOn);
   server.on("/off", handleLEDOff);
 
+  // Server start
   server.begin();
     Serial.println("Web Server Started");
 
   pinMode( ledPin, OUTPUT);
 
-  // BMP280 code
-	// LED code
-	// Wi-Fi code
 	// Routes
-	// Server start
-}
+	// LED code
+
+
 void loop(){
 
   Serial.println(position);
